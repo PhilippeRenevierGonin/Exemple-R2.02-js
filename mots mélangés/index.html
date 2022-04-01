@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8"/>
+    <title>mots mélés ou presque</title>
+
+    <link rel="stylesheet" href="css/style.css" type="text/css" />
+
+    <script type="text/javascript" src="PAC/Pac.js"></script>
+    <script type="text/javascript" src="PAC/grille/AbstractionGrille.js"></script>
+    <script type="text/javascript" src="PAC/grille/PrésentationGrille.js"></script>
+    <script type="text/javascript" src="PAC/grille/ControleurGrille.js"></script>
+    <script type="text/javascript" src="PAC/listemots/AbstractionListeMots.js"></script>
+    <script type="text/javascript" src="PAC/listemots/PrésentationListeMots.js"></script>
+    <script type="text/javascript" src="PAC/listemots/ControleurListeMots.js"></script>
+    <script type="text/javascript" src="PAC/ciment/AbstractionCiment.js"></script>
+    <script type="text/javascript" src="PAC/ciment/PrésentationCiment.js"></script>
+    <script type="text/javascript" src="PAC/ciment/ControleurCiment.js"></script>
+
+
+    <script type="text/javascript">
+
+        window.addEventListener("DOMContentLoaded", () => {
+
+
+            let absGrille = new AbsGrille();
+            let presGrille = new PresGrille();
+            let ctrlGrille = new CtrlGrille(absGrille, presGrille);
+
+            let absCiment = new AbsCiment();
+            let presCiment = new PresCiment();
+            let ctrlCiment = new CtrlCiment(absCiment, presCiment);
+
+            let absListe = new AbsListeMots();
+            let presListe = new PresListeMots();
+            let ctrlListe = new CtrlListeMots(absListe, presListe);
+
+            ctrlCiment.addEnfant(ctrlGrille);
+            ctrlCiment.addEnfant(ctrlListe);
+            ctrlCiment.init();
+
+        });
+
+
+    </script>
+
+
+</head>
+<body>
+
+
+
+</body>
+</html>

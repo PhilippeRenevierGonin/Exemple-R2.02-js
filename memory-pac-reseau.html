@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+    <meta charset="utf-8"/>
+    <title>memory version 08 : moteur / modèle, étape 3, avec vérification</title>
+
+    <style media="screen">
+
+        section {
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        section > div {
+            flex-grow: 0;
+            flex-shrink: 0;
+            flex-basis: calc(2px + 0.4rem + 5rem);
+            box-shadow: 0 0 0.5rem black;
+            margin: 0.5rem;
+        }
+
+
+        div.carte {
+            border: black thin solid;
+            background: white;
+            height: calc(2px + 0.4rem + 10rem);
+            transition: all 0.5s;
+        }
+
+        div.carte > div.intérieur {
+            margin: 0.2rem;
+            width: calc(100% - 0.4rem);
+            height: calc(100% - 0.4rem);
+        }
+
+        div.carte.cachée > div.intérieur {
+            background: black;
+        }
+
+        div.carte.montrée > div.intérieur {
+            margin: 0.2rem;
+            background: lightgreen;
+            width: calc(100% - 0.4rem - 2px);
+            height: calc(100% - 0.4rem - 2px);
+            border: black thin solid;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+        }
+
+        div.carte.verticale {
+            transform: rotateY(90deg) scale(1.05);
+        }
+
+        div.intérieur {
+            -webkit-user-select: none; /* Chrome all / Safari all */
+            -moz-user-select: none; /* Firefox all */
+            -ms-user-select: none;
+            user-select: none;
+        }
+
+
+    </style>
+
+    <script type="text/javascript">
+
+        class Moteur {
+
+            constructor(trier) {
+                this.textes = ["as", "roi", "dame", "valet", "dix", "neuf", "huit", "sept", "six", "cinq", "quatre"];
+                this.nbCartes = this.textes.length * 2; // nombres de cartes
+                this.textesCartesMélangées = [];
+                this.sélections = [];
+                this.tempsMontrées = 3000; // en ms... moins le temps d'animation
+                this.enAttenteLibération = 0; // pour laisser du temps
+
+                this.nbPairesTrouvées = 0;
+
+                let textesCartes = [];
+                for (let s in this.textes) {
+                    textesCartes.push(this.textes[s]);
+                    textesCartes.push(this.textes[s]);
+                }
+
+                this.textesCartesMélangées.push(""); // un premier élément vide, pour éviter le -1 lors du new Carte
+                if (trier) {
+                    for (let i = 0; i < this.nbCartes; i++) {this.textesCartesMélangées.push(textesCartes[i]); }
+                }
+                else {
+                    for (let i = this.nbCartes; i > 0; i--) {
+
+                        let indiceAléatoire = Math.floor(Math.random() * (i));
+                        let txt = textesCartes.splice(indiceAléatoire, 1);
+                        this.textesCartesMélangées.push(txt[0]);
+                    }
+                }
+
+
+            }
+
+
+            estFini() {
+                return this.nbPairesTrouvées == this.textes.length;
+            }
+
+            obtenirTexte(num) {
+                return this.textesCartesMélangées[num];
+            }
+
+            obtenirNbSélectionnées() {
+                return this.sélections.length;
+            }
+
+            sélectionPossible() {
+                return ((this.sélections.length < 2) && (this.enAttenteLibération == 0));
+            }
+
+            estEnFinDeSélection() {
+                return (this.enAttenteLibération > 0);
+            }
+
+            sélectionner(carte) {
+                if (this.sélectionPossible()) this.sélections.push(carte);
+            }
+
+            // choix fait : la Carte prévient de la fin de la séction, en retours on sait s'il faut retourner ou non.
+            finDeSélection() {
+                if (!this.sélectionPossible() && !this.estEnFinDeSélection()) {
+                    // test de la paire
+                    if (this.sélections[0].texte == this.sélections[1].texte) {
+                        // c'est une paire
+                        this.sélections.forEach(element => element.rendreInerte());
+                        this.sélections = [];
+                        this.nbPairesTrouvées += 1;
+                        if (this.estFini()) alert("finito");
+                    } else {
+                        // ce n'est pas une paire
+                        this.enAttenteLibération = 2;
+
+                        // il faut un temps d'attente... de quelques secondes (- me temps d'animation)
+                        setTimeout( () => {
+                            // forEach ou boucle std
+                            this.sélections.forEach(element => element.cacherCarte());
+                        }, this.tempsMontrées);
+                    }
+
+                }
+            }
+
+            libérerSélection() {
+                this.enAttenteLibération -= 1;
+                if (this.enAttenteLibération == 0) {
+                    this.sélections = [];
+                }
+
+                // normalement, jamais vrai...
+                if (this.enAttenteLibération < 0) {
+                    console.error("PB... trop de libération");
+                    this.enAttenteLibération = 0;
+                }
+            }
+
+        }
+
+
+        class Carte {
+
+            constructor(moteur, carteHtml, numero) {
+                this.moteur = moteur;
+                this.texte = moteur.obtenirTexte(numero);
+                this.carteHtml = carteHtml;
+                this.écouteur = () => { this.retourner(); };
+                this.carteHtml.addEventListener("click",  this.écouteur);
+            }
+
+
+            rendreInerte() {
+                this.carteHtml.removeEventListener("click", this.écouteur);
+            }
+
+
+            cacherCarte() {
+                this.carteHtml.className = "carte montrée verticale";
+                setTimeout( () => {
+                    this.carteHtml.firstElementChild.innerHTML = "";
+                    this.carteHtml.className = "carte cachée";
+                    this.moteur.libérerSélection();
+                }, parseFloat(getComputedStyle(this.carteHtml)['transitionDuration']) * 1000);
+
+            }
+
+            retourner() {
+                // console.dir(carte.firstChild);
+                // attention aux text nodes...
+                if (this.moteur.sélectionPossible() && (this.carteHtml.className == "carte cachée")) {
+                    this.moteur.sélectionner(this);
+
+                    this.carteHtml.className = "carte cachée verticale";
+                    // duree en fonction du css (temps de la transition en seconde)
+                    setTimeout( () => {
+                        this.carteHtml.className = "carte montrée";
+                        this.moteur.finDeSélection();
+                    }, parseFloat(getComputedStyle(this.carteHtml)['transitionDuration']) * 1000);
+                    this.carteHtml.firstElementChild.innerHTML = this.texte;
+
+                    /*
+                    // partie obsolète
+                    else if (this.carteHtml.className == "carte montrée") {
+
+                    } */
+                }
+
+
+            }
+
+        }
+
+        function créerCartes() {
+            let plateau = document.querySelector("#plateau") ; // on document.getElementById
+            let carteOriginale = document.querySelector("#modeleCarte") ; // on document.getElementById
+
+            let moteur = new Moteur();
+
+
+
+            for(let i = 1; i <= moteur.nbCartes; i++) {
+                // on récupère le DocumentFragment
+                let docFrag = document.importNode( carteOriginale.content, true) ;
+                // on récupère la portion du template qui nous intéresse
+                let nouvelleCarte = docFrag.querySelector("div");
+                nouvelleCarte.id="carte"+i;
+
+                let carte = new Carte(moteur, nouvelleCarte, i);
+                // mieux dans Carte
+                // nouvelleCarte.addEventListener("click", function() {carte.retourner();});
+
+                plateau.appendChild(nouvelleCarte);
+            }
+        }
+
+
+        window.addEventListener("DOMContentLoaded", () => { créerCartes(); } );
+
+    </script>
+
+
+
+    <link type="text/css" media="screen" rel="stylesheet" href="chrono/chrono.css" />
+
+
+    <script type="text/javascript" src="chrono//réseau/socketio/demo.socket.io.js"></script>
+
+
+
+     <script type="text/javascript" src="chrono/chronoPAC/PAC.js"></script>
+    <script type="text/javascript" src="chrono/réseau/ChronoAbstractionConnexion.js"></script>
+
+     <script type="text/javascript" src="chrono/chronoPAC/ChronoPresentation.js"></script>
+     <script type="text/javascript" src="chrono/chronoPAC/ChronoControleur.js"></script>
+
+
+
+     <script>
+         // point d'entrée
+         document.addEventListener("DOMContentLoaded", () => {
+             // version PAC avec le A sur le serveur
+             let chronoAbstraction = new ChronoAbstractionConnexion();
+             let chronoPresentation = new ChronoPresentation(0);
+
+             let chronoCtrl = new ChronoControleur("Chrono", chronoAbstraction, chronoPresentation);
+         });
+     </script>
+
+
+
+
+ </head>
+ <body>
+
+ <section id="plateau">
+     <template id="modeleCarte"><div class="carte cachée" id="carte1" ><div class="intérieur"></div></div></template>
+ </section>
+
+ </body>
+ </html>

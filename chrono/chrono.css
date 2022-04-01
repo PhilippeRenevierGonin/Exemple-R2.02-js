@@ -1,0 +1,11 @@
+aside[id^="chrono"]  {
+    position : absolute;
+    right: 0;
+    background: rgba(232,232,232,0.75);
+    padding-right: 0.5rem;
+}
+
+aside[id^="chrono"]  > span {
+    font-family: "Courier New", monospace;
+
+}
